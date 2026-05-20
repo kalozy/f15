@@ -73,8 +73,19 @@ async function register() {
   try {
     const res = await fetch('/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password,confirm})});
     const data = await res.json();
-    if (data.ok) { window.location.href = data.redirect || '/dashboard'; }
-    else { errBox.textContent=data.error||'Erro ao criar conta'; errBox.style.display='block'; }
+    if (data.ok && data.pending) {
+      document.querySelector('.card').innerHTML = `
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:48px;margin-bottom:16px">⏳</div>
+          <h2 style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:8px">Cadastro enviado!</h2>
+          <p style="font-size:14px;color:#6b7280;line-height:1.7;margin-bottom:20px">${data.message}</p>
+          <a href="/login" style="color:#3b82f6;font-size:14px;font-weight:500;text-decoration:none">← Voltar ao login</a>
+        </div>`;
+    } else if (data.ok) {
+      window.location.href = data.redirect || '/dashboard';
+    } else {
+      errBox.textContent=data.error||'Erro ao criar conta'; errBox.style.display='block';
+    }
   } catch { errBox.textContent='Erro de conexão'; errBox.style.display='block'; }
   finally { btn.disabled=false; btn.textContent='Criar minha conta'; }
 }
