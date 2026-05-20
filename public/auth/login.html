@@ -62,7 +62,11 @@ async function login() {
     const res = await fetch('/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password}) });
     const data = await res.json();
     if (data.ok) { window.location.href = data.redirect || '/dashboard'; }
-    else { errBox.textContent = data.error || 'Erro ao entrar'; errBox.style.display = 'block'; }
+    else { errBox.textContent = data.error || 'Erro ao entrar';
+    errBox.style.display = 'block';
+    if (data.error && data.error.includes('aprovação')) {
+      errBox.style.background = '#fffbeb'; errBox.style.color = '#92400e'; errBox.style.borderColor = '#fde68a';
+    } }
   } catch { errBox.textContent = 'Erro de conexão'; errBox.style.display = 'block'; }
   finally { btn.disabled = false; btn.textContent = 'Entrar'; }
 }
