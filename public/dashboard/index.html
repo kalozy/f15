@@ -300,36 +300,9 @@
 
 
   <!-- ── Bot page (embed) ──────────────────────────────────────────────────── -->
-  <div class="page" id="page-bot" style="padding:0;display:flex;flex-direction:column;height:100vh;position:relative">
-
-    <!-- Bot connection bar -->
-    <div id="bot-conn-bar" style="background:#0f172a;border-bottom:1px solid #1e293b;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:10">
-      <div style="display:flex;align-items:center;gap:8px;flex:1">
-        <div id="bot-status-dot" style="width:10px;height:10px;border-radius:50%;background:#94a3b8;flex-shrink:0;transition:background .3s"></div>
-        <span id="bot-status-label" style="font-size:13px;color:#94a3b8;font-weight:500">Desconectado</span>
-        <span id="bot-name-label" style="font-size:12px;color:#475569;margin-left:4px"></span>
-      </div>
-      <button onclick="botConnect()" id="bot-btn-connect" style="padding:7px 20px;background:#25D366;border:none;border-radius:7px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s">▶ Conectar</button>
-      <button onclick="botDisconnect()" id="bot-btn-disconnect" style="padding:7px 14px;background:transparent;border:1px solid #334155;border-radius:7px;color:#94a3b8;font-size:13px;cursor:pointer;display:none">■ Desconectar</button>
-    </div>
-
-    <!-- QR Code overlay -->
-    <div id="bot-qr-overlay" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center">
-      <div style="background:#fff;border-radius:16px;padding:32px 28px;text-align:center;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-        <div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:6px">📱 Escanear QR Code</div>
-        <div style="font-size:13px;color:#6b7280;margin-bottom:18px;line-height:1.7">1. Abra o WhatsApp no celular<br>2. Toque em <strong>⋮ → Dispositivos conectados</strong><br>3. Toque em <strong>Conectar dispositivo</strong><br>4. Aponte a câmera para o QR abaixo</div>
-        <div style="width:240px;height:240px;margin:0 auto;border-radius:10px;border:2px solid #e5e7eb;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f9fafb">
-          <img id="bot-qr-img" src="" alt="QR Code" style="width:220px;height:220px">
-        </div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:12px" id="bot-qr-timer">QR expira em 60 segundos</div>
-        <button onclick="document.getElementById('bot-qr-overlay').style.display='none'" style="margin-top:16px;padding:8px 24px;background:#f1f5f9;border:none;border-radius:8px;cursor:pointer;font-size:13px;color:#374151;font-weight:500">Fechar</button>
-      </div>
-    </div>
-
-    <!-- Bot iframe -->
-    <iframe id="bot-iframe" src="/bot" style="flex:1;border:none;width:100%;min-height:0" allow="camera;microphone"></iframe>
+  <div class="page" id="page-bot" style="padding:0;height:calc(100vh - 56px)">
+    <iframe id="bot-iframe" src="/bot" style="width:100%;height:100%;border:none;display:block" allow="camera;microphone"></iframe>
   </div>
-
   <!-- ── Payment Links page ──────────────────────────────────────────────── -->
   <div class="page" id="page-payment-links">
     <div class="section-header">
@@ -731,7 +704,6 @@ function navigate(page, el) {
   if (page === 'bot') {
     const iframe = document.getElementById('bot-iframe');
     if (iframe && (!iframe.src || iframe.src === 'about:blank')) iframe.src = '/bot';
-    checkBotStatus();
     return; // don't deactivate bot subitems
   }
   // clear bot subitems when leaving bot section
@@ -1770,93 +1742,6 @@ async function loadHome() {
 }
 
 
-
-// ── Bot Connect / Disconnect (dashboard-native) ───────────────────────────────
-let botQrTimer = null;
-
-function updateBotStatus(status, qr) {
-  const dot   = document.getElementById('bot-status-dot');
-  const label = document.getElementById('bot-status-label');
-  const btnConnect    = document.getElementById('bot-btn-connect');
-  const btnDisconnect = document.getElementById('bot-btn-disconnect');
-  const overlay = document.getElementById('bot-qr-overlay');
-
-  const colors = { connected:'#22c55e', connecting:'#f59e0b', qr:'#3b82f6', disconnected:'#94a3b8' };
-  const labels = { connected:'● Conectado', connecting:'○ Conectando...', qr:'📱 Aguardando QR scan...', disconnected:'○ Desconectado' };
-
-  if (dot)   dot.style.background = colors[status] || '#94a3b8';
-  if (label) label.textContent    = labels[status] || status;
-  if (label) label.style.color    = colors[status] || '#94a3b8';
-
-  if (status === 'connected') {
-    if (btnConnect)    { btnConnect.style.display='none'; }
-    if (btnDisconnect) { btnDisconnect.style.display=''; }
-    if (overlay)       overlay.style.display = 'none';
-    if (botQrTimer)    { clearInterval(botQrTimer); botQrTimer=null; }
-    toast('✅ WhatsApp conectado!');
-  } else if (status === 'qr' && qr) {
-    if (btnConnect)    { btnConnect.style.display=''; btnConnect.textContent='↺ Novo QR'; }
-    if (btnDisconnect) { btnDisconnect.style.display=''; }
-    const img = document.getElementById('bot-qr-img');
-    if (img) img.src = qr;
-    if (overlay) overlay.style.display = 'flex';
-    // Countdown timer
-    let secs = 60;
-    const timerEl = document.getElementById('bot-qr-timer');
-    if (botQrTimer) clearInterval(botQrTimer);
-    botQrTimer = setInterval(() => {
-      secs--;
-      if (timerEl) timerEl.textContent = 'QR expira em ' + secs + ' segundos';
-      if (secs <= 0) { clearInterval(botQrTimer); if (timerEl) timerEl.textContent = 'QR expirado — clique Conectar novamente'; }
-    }, 1000);
-  } else {
-    if (btnConnect)    { btnConnect.style.display=''; btnConnect.textContent='▶ Conectar'; }
-    if (btnDisconnect) { btnDisconnect.style.display='none'; }
-    if (overlay)       overlay.style.display = 'none';
-  }
-}
-
-async function botConnect() {
-  const btn = document.getElementById('bot-btn-connect');
-  if (btn) { btn.disabled=true; btn.textContent='Iniciando...'; }
-  try {
-    await fetch('/bot-api/bot/start', { method:'POST' });
-  } catch {}
-  setTimeout(() => { if (btn) { btn.disabled=false; btn.textContent='▶ Conectar'; } }, 3000);
-}
-
-async function botDisconnect() {
-  if (!confirm('Desconectar o WhatsApp?')) return;
-  await fetch('/bot-api/bot/stop', { method:'POST' });
-  updateBotStatus('disconnected');
-}
-
-// Check bot status on load and when navigating to bot page
-async function checkBotStatus() {
-  try {
-    const data = await fetch('/bot-api/bot/status').then(r=>r.json());
-    updateBotStatus(data.status, data.qr);
-    // Sync bot name
-    if (data.botName) {
-      const nameEl = document.getElementById('bot-name-label');
-      if (nameEl) nameEl.textContent = data.botName;
-    }
-  } catch {}
-}
-
-// Socket.IO: listen for bot status events
-if (typeof socket !== 'undefined') {
-  socket.on('bot:status', function(data) {
-    updateBotStatus(data.status, data.qr);
-  });
-} else {
-  // Fallback: poll every 3s when bot page is active
-  setInterval(() => {
-    if (document.getElementById('page-bot')?.classList.contains('active')) {
-      checkBotStatus();
-    }
-  }, 3000);
-}
 
 
 // ── Init ──
