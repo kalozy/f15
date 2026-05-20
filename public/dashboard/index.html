@@ -1723,7 +1723,7 @@ async function loadHome() {
     const today = new Date().toISOString().slice(0,10);
     const [summary, convResp] = await Promise.all([
       api('GET', '/orders/summary?from='+today+'&to='+today).catch(()=>null),
-      api('GET', '/bot-api/stats').catch(()=>null),
+      fetch('/bot-api/stats').then(r=>r.ok?r.json():null).catch(()=>null),
     ]);
     const stats = [
       { icon:'💰', label:'Receita Hoje', value: summary ? brl(summary.paid_total||0) : 'R$ —', color:'var(--success)' },
