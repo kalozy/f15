@@ -23,11 +23,10 @@ router.post('/register', async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10);
     const info = db.prepare(
-      "INSERT INTO users (name, email, password_hash, plan, status) VALUES (?, ?, ?, 'free', 'active')"
+      "INSERT INTO users (name, email, password_hash, plan, status) VALUES (?, ?, ?, 'free', 'pending')"
     ).run(name.trim(), email.toLowerCase().trim(), hash);
 
-    req.session.userId = info.lastInsertRowid;
-    req.session.save(() => res.json({ ok: true, redirect: '/dashboard' }));
+    res.json({ ok: true, pending: true, message: 'Cadastro realizado! Aguarde a aprovação do administrador para acessar.' });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
@@ -45,7 +44,8 @@ router.post('/login', async (req, res) => {
 
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
   if (!user) return res.status(401).json({ error: 'E-mail ou senha incorretos' });
-  if (user.status !== 'active') return res.status(403).json({ error: 'Conta suspensa. Entre em contato com o suporte.' });
+  if (user.status === 'pending')   return res.status(403).json({ error: 'Cadastro aguardando aprovação. Entre em contato com o administrador.' });
+  if (user.status !== 'active')    return res.status(403).json({ error: 'Conta suspensa. Entre em contato com o suporte.' });
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'E-mail ou senha incorretos' });
