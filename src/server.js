@@ -598,10 +598,11 @@ app.delete('/admin-api/users/:id', requireAdmin, async(req,res) => {
 app.get('/admin-api/stats', requireAdmin, (req,res) => {
   const totalUsers=db.prepare('SELECT COUNT(*) as c FROM users').get()?.c||0;
   const activeUsers=db.prepare("SELECT COUNT(*) as c FROM users WHERE status='active'").get()?.c||0;
+  const pendingUsers=db.prepare("SELECT COUNT(*) as c FROM users WHERE status='pending'").get()?.c||0;
   const bots=botManager.listInstances();
   const connectedBots=bots.filter(b=>b.status==='connected').length;
   const totalRevenue=db.prepare("SELECT SUM(valor) as r FROM orders WHERE status='paid'").get()?.r||0;
-  res.json({totalUsers,activeUsers,connectedBots,totalBots:bots.length,totalRevenue});
+  res.json({totalUsers,activeUsers,pendingUsers,connectedBots,totalBots:bots.length,totalRevenue});
 });
 
 // ── Socket.IO ─────────────────────────────────────────────────────────────────
