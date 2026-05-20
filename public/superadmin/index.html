@@ -54,6 +54,7 @@ tbody td{padding:11px 14px}
   <div class="kpis">
     <div class="kpi"><div class="kpi-label">Total Usuários</div><div class="kpi-value blue" id="k-users">—</div></div>
     <div class="kpi"><div class="kpi-label">Usuários Ativos</div><div class="kpi-value green" id="k-active">—</div></div>
+    <div class="kpi"><div class="kpi-label">⏳ Aguardando</div><div class="kpi-value" style="color:#d97706" id="k-pending">—</div></div>
     <div class="kpi"><div class="kpi-label">Bots Conectados</div><div class="kpi-value" id="k-bots">—</div></div>
     <div class="kpi"><div class="kpi-label">Receita Total</div><div class="kpi-value green" id="k-revenue">—</div></div>
   </div>
@@ -87,6 +88,7 @@ async function loadStats() {
   const d = await fetch('/admin-api/stats').then(r=>r.json()).catch(()=>({}));
   document.getElementById('k-users').textContent   = d.totalUsers||0;
   document.getElementById('k-active').textContent  = d.activeUsers||0;
+  document.getElementById('k-pending').textContent = d.pendingUsers||0;
   document.getElementById('k-bots').textContent    = (d.connectedBots||0) + ' / ' + (d.totalBots||0);
   document.getElementById('k-revenue').textContent = brl(d.totalRevenue||0);
 }
@@ -96,8 +98,12 @@ async function loadUsers() {
   const tbody = document.getElementById('users-tbody');
   if (!users.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nenhum usuário cadastrado</td></tr>'; return; }
   tbody.innerHTML = users.map(u => {
-    const planBadge = u.plan==='admin'?'<span class="badge badge-red">Admin</span>':u.plan==='pro'?'<span class="badge badge-blue">Pro</span>':'<span class="badge badge-gray">Free</span>';
-    const statusBadge = u.status==='active'?'<span class="badge badge-green">Ativo</span>':'<span class="badge badge-red">Suspenso</span>';
+    const planBadge = u.plan==='admin'?'<span class="badge badge-red">Admin</span>':'<span class="badge badge-gray">Free</span>';
+    const statusBadge = u.status==='active'
+      ? '<span class="badge badge-green">Ativo</span>'
+      : u.status==='pending'
+      ? '<span class="badge badge-yellow">⏳ Pendente</span>'
+      : '<span class="badge badge-red">Suspenso</span>';
     const botBadge = u.botStatus==='connected'?'<span class="badge badge-green">● Online</span>':'<span class="badge badge-gray">Offline</span>';
     const dt = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-BR') : '—';
     return `<tr>
@@ -113,18 +119,27 @@ async function loadUsers() {
         <div style="display:flex;gap:5px;flex-wrap:wrap">
           <select id="plan-${u.id}" onchange="updateUser(${u.id},'plan',this.value)" style="padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;font-family:'Inter',sans-serif">
             <option value="free" ${u.plan==='free'?'selected':''}>Free</option>
-            <option value="pro" ${u.plan==='pro'?'selected':''}>Pro</option>
             <option value="admin" ${u.plan==='admin'?'selected':''}>Admin</option>
           </select>
-          ${u.status==='active'
-            ?`<button class="btn btn-danger btn-sm" onclick="updateUser(${u.id},'status','suspended')">Suspender</button>`
-            :`<button class="btn btn-primary btn-sm" onclick="updateUser(${u.id},'status','active')">Ativar</button>`
+          ${u.status==='pending'
+            ? `<button class="btn btn-primary btn-sm" onclick="approveUser(${u.id})" style="background:#16a34a;border-color:#16a34a">✓ Aprovar</button>
+               <button class="btn btn-danger btn-sm" onclick="updateUser(${u.id},'status','suspended')">Rejeitar</button>`
+            : u.status==='active'
+            ? `<button class="btn btn-danger btn-sm" onclick="updateUser(${u.id},'status','suspended')">Suspender</button>`
+            : `<button class="btn btn-primary btn-sm" onclick="updateUser(${u.id},'status','active')">Ativar</button>`
           }
           <button class="btn btn-sm" style="border-color:#fca5a5;color:var(--danger)" onclick="deleteUser(${u.id},'${esc(u.name)}')">Deletar</button>
         </div>
       </td>
     </tr>`;
   }).join('');
+}
+
+async function approveUser(id) {
+  const res = await fetch('/admin-api/users/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'active'})});
+  const d = await res.json();
+  if(d.ok) { toast('Usuário aprovado! Já pode fazer login.'); loadUsers(); loadStats(); }
+  else toast(d.error||'Erro', false);
 }
 
 async function updateUser(id, field, value) {
