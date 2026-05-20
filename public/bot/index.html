@@ -800,8 +800,7 @@ function updateStatus(status, qr){
   const labels = { connected:'🟢 Conectado', connecting:'🟡 Conectando...', qr:'📱 Escaneie o QR', disconnected:'🔴 Desconectado' };
   lbl.textContent = labels[status] || status;
   if(dotEmb) dotEmb.className = 'dot ' + status;
-  var labels = {connected:'● Conectado',connecting:'○ Conectando…',disconnected:'○ Desconectado',qr:'📱 Escaneie o QR'};
-  if(labelEmb) labelEmb.textContent = labels[status] || status;
+  if(labelEmb) { var embLabels = {connected:'● Conectado',connecting:'○ Conectando…',disconnected:'○ Desconectado',qr:'📱 Escaneie o QR'}; labelEmb.textContent = embLabels[status] || status; }
   if(status==='qr' && qr){ document.getElementById('qr-img').src = qr; document.getElementById('qr-modal').style.display='flex'; }
   if(status==='connected'){ document.getElementById('qr-modal').style.display='none'; toast('Bot conectado!','success'); }
 }
